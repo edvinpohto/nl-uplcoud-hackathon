@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chaos-monkey
+  namespace: chaos
+  labels:
+    app: chaos-monkey
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chaos-monkey
+  template:
+    metadata:
+      labels:
+        app: chaos-monkey
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: chaos-monkey
+      containers:
+        - name: chaos-monkey
+          image: REGISTRY/chaos-monkey:TAG
+          ports:
+            - containerPort: 8080
+              name: metrics
+          env:
+            - name: KUBECONFIG_DATA
+              valueFrom:
+                secretKeyRef:
+                  name: victim-cluster-config
+                  key: kubeconfig
+            - name: CLUSTER_A_UUID
+              valueFrom:
+                secretKeyRef:
+                  name: victim-cluster-config
+                  key: cluster_uuid
+                  optional: true
+            - name: UPCLOUD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: upcloud-credentials
+                  key: token
+            - name: VICTIM_NAMESPACE
+              value: "victim"
+            - name: MIN_INTERVAL
+              value: "30s"
+            - name: MAX_INTERVAL
+              value: "120s"
+            - name: WEIGHT_POD_KILL
+              value: "40"
+            - name: WEIGHT_NODE_REBOOT
+              value: "20"
+            - name: WEIGHT_NODE_STOP
+              value: "10"
+            - name: WEIGHT_NETWORK_DISRUPT
+              value: "20"
+            - name: WEIGHT_SCALE_ZERO
+              value: "10"
+            - name: NODE_STOP_DURATION
+              value: "60s"
+            - name: SCALE_ZERO_DURATION
+              value: "30s"
+            - name: NETWORK_DISRUPT_DELAY
+              value: "200ms"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      terminationGracePeriodSeconds: 30

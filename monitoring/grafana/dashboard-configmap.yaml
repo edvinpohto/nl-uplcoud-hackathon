@@ -1,0 +1,230 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-json
+  namespace: chaos
+data:
+  chaos-dashboard.json: |
+    {
+      "title": "Chaos Monkey - UpCloud UKS",
+      "uid": "chaos-monkey-uks",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "10s",
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Uptime % (rolling 5m)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "avg_over_time(uptime_probe_success[5m]) * 100",
+              "legendFormat": "uptime %"
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 90},
+                  {"color": "green", "value": 99}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Response Time p99 (1m)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, rate(probe_response_seconds_bucket[1m]))",
+              "legendFormat": "p99"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 5}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 3,
+          "title": "Probe Error Rate (1m)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "rate(probe_errors_total[1m])",
+              "legendFormat": "errors/s"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 0.1},
+                  {"color": "red", "value": 1}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Current Probe Status",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "targets": [
+            {
+              "expr": "uptime_probe_success",
+              "legendFormat": "success"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}
+              ]
+            }
+          }
+        },
+        {
+          "id": 5,
+          "title": "Uptime Over Time",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
+          "targets": [
+            {
+              "expr": "uptime_probe_success",
+              "legendFormat": "probe success"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "green", "value": 1}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Response Time Histogram",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, rate(probe_response_seconds_bucket[1m]))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, rate(probe_response_seconds_bucket[1m]))",
+              "legendFormat": "p95"
+            },
+            {
+              "expr": "histogram_quantile(0.99, rate(probe_response_seconds_bucket[1m]))",
+              "legendFormat": "p99"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "s"}}
+        },
+        {
+          "id": 7,
+          "title": "Chaos Actions (5m window)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "targets": [
+            {
+              "expr": "increase(chaos_actions_total{action=\"pod_kill\"}[5m])",
+              "legendFormat": "pod_kill"
+            },
+            {
+              "expr": "increase(chaos_actions_total{action=\"node_reboot\"}[5m])",
+              "legendFormat": "node_reboot"
+            },
+            {
+              "expr": "increase(chaos_actions_total{action=\"node_stop\"}[5m])",
+              "legendFormat": "node_stop"
+            },
+            {
+              "expr": "increase(chaos_actions_total{action=\"network_disrupt\"}[5m])",
+              "legendFormat": "network_disrupt"
+            },
+            {
+              "expr": "increase(chaos_actions_total{action=\"scale_zero\"}[5m])",
+              "legendFormat": "scale_zero"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "Chaos Action Errors",
+          "type": "timeseries",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 20},
+          "targets": [
+            {
+              "expr": "rate(chaos_action_errors_total[5m])",
+              "legendFormat": "{{action}} errors/s"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "title": "Consecutive Probe Failures",
+          "type": "stat",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 20},
+          "targets": [
+            {
+              "expr": "probe_consecutive_failures",
+              "legendFormat": "consecutive failures"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 3},
+                  {"color": "red", "value": 10}
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }

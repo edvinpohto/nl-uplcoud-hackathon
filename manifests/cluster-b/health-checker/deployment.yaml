@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: health-checker
+  namespace: chaos
+  labels:
+    app: health-checker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: health-checker
+  template:
+    metadata:
+      labels:
+        app: health-checker
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: health-checker
+          image: REGISTRY/health-checker:TAG
+          ports:
+            - containerPort: 9090
+              name: metrics
+          env:
+            - name: TARGET_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: health-checker-config
+                  key: target_url
+            - name: PROBE_INTERVAL
+              value: "1s"
+            - name: PROBE_TIMEOUT
+              value: "5s"
+            - name: METRICS_PORT
+              value: "9090"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      terminationGracePeriodSeconds: 10

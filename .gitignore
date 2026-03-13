@@ -1,1 +1,27 @@
 .claude
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform/backend.tf
+terraform/bootstrap/.terraform/
+*.tfvars
+*.tfvars.json
+
+# Kubeconfigs (contain credentials)
+kc-a.yaml
+kc-b.yaml
+*.kubeconfig
+
+# Go
+*/vendor/
+*/go.sum
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+*.swp

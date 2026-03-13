@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: health-checker
+  namespace: chaos
+  labels:
+    app: health-checker
+spec:
+  type: ClusterIP
+  selector:
+    app: health-checker
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+---
+# ConfigMap populated by scripts/apply-kubeconfig.sh with the victim-app LB IP
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: health-checker-config
+  namespace: chaos
+data:
+  # Populated by apply-kubeconfig.sh: http://<victim-app-lb-ip>:8080/health
+  target_url: "http://VICTIM_APP_LB_IP:8080/health"
