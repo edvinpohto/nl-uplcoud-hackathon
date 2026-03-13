@@ -62,15 +62,48 @@ Weights are relative — pod_kill fires ~50% of the time. All weights and interv
 
 ## Deployment
 
+### Prerequisites
+
+- [Terraform](https://terraform.io) >= 1.5
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [Docker](https://docker.com) with `docker buildx` support (for cross-platform builds)
+- UpCloud account with an API token (create one at: UpCloud Hub → API credentials)
+- Docker Hub account with **public** repositories named `victim-app`, `health-checker`, `chaos-monkey`
+
+> The repositories must be public — the UpCloud nodes pull images without Docker Hub credentials.
+
+### Steps
+
 ```bash
-# 1. Provision infrastructure
+# 1. Bootstrap Terraform state storage (one-time only)
+export UPCLOUD_TOKEN=<your-api-token>
+./scripts/bootstrap.sh
+
+# 2. Provision infrastructure (SDN network + both clusters)
 cd terraform && terraform apply -var upcloud_token=$UPCLOUD_TOKEN
 
-# 2. Build and push Docker images (requires Docker Hub account)
-REGISTRY=docker.io/<user> ./scripts/build-push.sh
+# 3. Build and push Docker images
+export REGISTRY=docker.io/<your-dockerhub-username>
+./scripts/build-push.sh
 
-# 3. Wire clusters together (injects kubeconfig + LB IP as secrets, applies all manifests)
-UPCLOUD_TOKEN=<token> REGISTRY=docker.io/<user> ./scripts/apply-kubeconfig.sh
+# 4. Wire clusters together and deploy everything
+UPCLOUD_TOKEN=$UPCLOUD_TOKEN REGISTRY=$REGISTRY ./scripts/apply-kubeconfig.sh
+```
+
+Step 4 extracts kubeconfigs via the UpCloud API, injects Cluster A's kubeconfig into Cluster B as a Secret, waits for the victim-app LoadBalancer IP, and applies all Kubernetes manifests to both clusters.
+
+### Verify
+
+```bash
+# Check victim app is up
+kubectl --kubeconfig=kc-a.yaml get pods -n victim
+
+# Watch chaos monkey logs
+kubectl --kubeconfig=kc-b.yaml logs -f deployment/chaos-monkey -n chaos
+
+# Open Grafana (find the external hostname)
+kubectl --kubeconfig=kc-b.yaml get svc grafana -n chaos
+# Visit http://<EXTERNAL-IP>:3000  (admin / admin)
 ```
 
 ## Configuration
